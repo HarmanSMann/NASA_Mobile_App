@@ -27,6 +27,16 @@ In summary, the MVC architecture was chosen for the NASA Mobile App because it p
 | ![Screenshot 1](screenshots/Screenshot_20230609_044306.png) | ![Screenshot 2](screenshots/Screenshot_20230609_044339.png) | 
 | ![Screenshot 3](screenshots/Screenshot_20230609_044353.png) | ![Screenshot 4](screenshots/Screenshot_20230609_044412.png) |
 
+<table>
+  <tr>
+    <td>
+      <img src="screenshots/Screenshot_20230609_044306.png" alt="Screenshot 1" width="400px">
+    </td>
+    <td>
+      <img src="screenshots/Screenshot_20230609_044339.png" alt="Screenshot 2" width="400px">
+    </td>
+  </tr>
+</table>
 
 ## How to Run the Application
 To run the NASA Mobile App on Android Studio, follow these steps:
