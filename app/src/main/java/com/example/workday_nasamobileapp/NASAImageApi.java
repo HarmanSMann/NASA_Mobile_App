@@ -7,6 +7,6 @@ import retrofit2.http.Query;
 
 public interface NASAImageApi {
     @GET("search")
-    Call<ResponseBody> searchImages(@Query("q") String query, @Query("media_type") String mediaType);;
+    Call<ResponseBody> searchImages(@Query("q") String query, @Query("media_type") String mediaType, @Query("page") int page);
 }
 

@@ -34,6 +34,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
+    private int currentPage = 1, totalPages = 0;
 
 
     @Override
@@ -49,7 +50,8 @@ public class MainActivity extends AppCompatActivity {
 
         recyclerView = findViewById(R.id.results_rv);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
+        ItemAdapter itemAdapter = new ItemAdapter(new ArrayList<>());
+        recyclerView.setAdapter(itemAdapter);
 
         // Create Retrofit instance
         Retrofit retrofit = new Retrofit.Builder()
@@ -63,57 +65,88 @@ public class MainActivity extends AppCompatActivity {
         search_btn.setOnClickListener(v -> {
             // Make API call
             if (!search_et.getText().toString().isEmpty()) {
-                Call<ResponseBody> call = nasaImageApi.searchImages(search_et.getText().toString(), "image");
-                call.enqueue(new Callback<ResponseBody>() {
-                    @Override
-                    public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> response) {
-                        if (response.isSuccessful()) {
-                            try {
-                                assert response.body() != null;
-                                String jsonData = response.body().string();
-                                Log.d("@Harman - Api response", "API response: " + jsonData);
-                                // Process the JSON data and return data to list
-                                processJsonData(jsonData);
+                currentPage = 1;
+                page_num.setText(String.valueOf(currentPage));
+                searchImages(nasaImageApi, search_et.getText().toString());
 
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                                // Handle JSON parsing error
-                            }
-                        } else {
-                            Log.e("@Harman - API failed", "API call failed: " + response.message());
-                            // Handle unsuccessful API response
-                        }
-                    }
-                    @Override
-                    public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t) {
-                        Log.e("api failed", "API call failed: " + t.getMessage());
-                        // Handle API request failure
-                    }
-                });
             } else {
                 Toast.makeText(this, "Please Add Search Term", Toast.LENGTH_SHORT).show();
             }
         });
 
+        prev_btn.setOnClickListener(v -> {
+            if (currentPage > 1) {
+                currentPage--;
+                searchImages(nasaImageApi, search_et.getText().toString());
+                page_num.setText(String.valueOf(currentPage));
+                Toast.makeText(this, "Next Page:" + currentPage, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Cant go back", Toast.LENGTH_SHORT).show();
+            }
+        });
 
+        next_btn.setOnClickListener(v -> {
+            if (currentPage < totalPages) {
+                currentPage++;
+                searchImages(nasaImageApi, search_et.getText().toString());
+                page_num.setText(String.valueOf(currentPage));
+                Toast.makeText(this, "Next Page:", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "No More Pages", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void searchImages(NASAImageApi nasaImageApi, String searchTerm) {
+        Call<ResponseBody> call = nasaImageApi.searchImages(searchTerm, "image", currentPage);
+        call.enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> response) {
+                if (response.isSuccessful()) {
+                    try {
+                        assert response.body() != null;
+                        String jsonData = response.body().string();
+                        Log.d("@Harman - Api response", "API response: " + jsonData);
+                        // Process the JSON data and return data to list
+                        processJsonData(jsonData);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        // Handle JSON parsing error
+                    }
+                } else {
+                    Log.e("@Harman - API failed", "API call failed: " + response.message());
+                    // Handle unsuccessful API response
+                }
+            }
+
+            @Override
+            public void onFailure(@NonNull Call<ResponseBody> call, @NonNull Throwable t) {
+                Log.e("api failed", "API call failed: " + t.getMessage());
+                // Handle API request failure
+            }
+        });
     }
 
     private void processJsonData(String jsonData) {
         try {
             JSONObject jsonObject = new JSONObject(jsonData);
-            JSONArray jsonArray = jsonObject.getJSONObject("collection").getJSONArray("items");
+            JSONObject collectionObject = jsonObject.getJSONObject("collection");
+            JSONArray itemsArray = collectionObject.getJSONArray("items");
+
+            JSONObject metadataObject = collectionObject.getJSONObject("metadata");
+            int totalHits = metadataObject.optInt("total_hits", 0);
+            int pageSize = 100;
+            totalPages = calculateTotalPages(totalHits, pageSize);
 
             ArrayList<ItemModel> modelArrayList = new ArrayList<>(); // Create a new modelArrayList
 
-            // Iterate through items and extract search results
-            Log.d("@Harman - num of Items", "processJsonData: " + jsonArray.length());
-            for (int i = 0; i < jsonArray.length(); i++) {
-                JSONObject itemObject = jsonArray.getJSONObject(i);
+            for (int i = 0; i < itemsArray.length(); i++) {
+                JSONObject itemObject = itemsArray.getJSONObject(i);
                 JSONArray dataArray = itemObject.getJSONArray("data");
                 JSONObject dataObject = dataArray.getJSONObject(0);
 
                 String title = dataObject.optString("title", "");
-                String imageUrl = dataObject.optString("href", "");
+                String imageUrl = "";
                 String description = dataObject.optString("description", "");
                 String date_created = (dataObject.optString("date_created", ""));
 
@@ -147,5 +180,9 @@ public class MainActivity extends AppCompatActivity {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    private int calculateTotalPages(int totalHits, int pageSize) {
+        return (int) Math.ceil((double) totalHits / pageSize);
     }
 }

@@ -20,8 +20,12 @@ public class ItemModel implements Serializable {
         return imageUrl;
     }
 
-    public String getDescription() { return description;}
+    public String getDescription() {
+        return description;
+    }
 
-    public String getDate() {return date;}
+    public String getDate() {
+        return date;
+    }
 
 }

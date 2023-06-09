@@ -2,4 +2,7 @@
     <string name="app_name">Workday - NASA Mobile App</string>
     <string name="image_from_the_title">image from the title</string>
     <string name="item_image">Item image</string>
+    <string name="next">Next</string>
+    <string name="prev">Prev</string>
+    <string name="search">Search</string>
 </resources>
