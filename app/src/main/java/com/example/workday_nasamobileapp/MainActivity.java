@@ -1,6 +1,5 @@
 package com.example.workday_nasamobileapp;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
@@ -15,9 +14,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 
 import com.example.workday_nasamobileapp.DataAdaptor.ItemAdapter;
-import com.example.workday_nasamobileapp.DataAdaptor.ItemModel;
+import com.example.workday_nasamobileapp.JsonDataProcessing.JsonProcessor;
+import com.example.workday_nasamobileapp.JsonDataProcessing.NASAImageApi;
+import com.example.workday_nasamobileapp.JsonDataProcessing.NASAImageApiService;
+import com.example.workday_nasamobileapp.JsonDataProcessing.PaginationHelper;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -28,13 +29,11 @@ import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
-    private int currentPage = 1, totalPages = 0;
+    private PaginationHelper paginationHelper;
 
 
     @Override
@@ -53,20 +52,15 @@ public class MainActivity extends AppCompatActivity {
         ItemAdapter itemAdapter = new ItemAdapter(new ArrayList<>());
         recyclerView.setAdapter(itemAdapter);
 
-        // Create Retrofit instance
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://images-api.nasa.gov/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
+        NASAImageApi nasaImageApi = NASAImageApiService.getApi();
+        paginationHelper = new PaginationHelper();
 
-        // Create API service
-        NASAImageApi nasaImageApi = retrofit.create(NASAImageApi.class);
 
         search_btn.setOnClickListener(v -> {
             // Make API call
             if (!search_et.getText().toString().isEmpty()) {
-                currentPage = 1;
-                page_num.setText(String.valueOf(currentPage));
+                paginationHelper.setCurrentPage(1);
+                page_num.setText(String.valueOf(paginationHelper.getCurrentPage()));
                 searchImages(nasaImageApi, search_et.getText().toString());
 
             } else {
@@ -75,22 +69,22 @@ public class MainActivity extends AppCompatActivity {
         });
 
         prev_btn.setOnClickListener(v -> {
-            if (currentPage > 1) {
-                currentPage--;
+            if (paginationHelper.hasPreviousPage()) {
+                paginationHelper.goToPreviousPage();
                 searchImages(nasaImageApi, search_et.getText().toString());
-                page_num.setText(String.valueOf(currentPage));
-                Toast.makeText(this, "Next Page:" + currentPage, Toast.LENGTH_SHORT).show();
+                page_num.setText(String.valueOf(paginationHelper.getCurrentPage()));
+                Toast.makeText(this, "Next Page:" + paginationHelper.getCurrentPage(), Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(this, "Cant go back", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Can't go back", Toast.LENGTH_SHORT).show();
             }
         });
 
         next_btn.setOnClickListener(v -> {
-            if (currentPage < totalPages) {
-                currentPage++;
+            if (paginationHelper.hasNextPage()) {
+                paginationHelper.goToNextPage();
                 searchImages(nasaImageApi, search_et.getText().toString());
-                page_num.setText(String.valueOf(currentPage));
-                Toast.makeText(this, "Next Page:", Toast.LENGTH_SHORT).show();
+                page_num.setText(String.valueOf(paginationHelper.getCurrentPage()));
+                Toast.makeText(this, "Next Page:" + paginationHelper.getCurrentPage(), Toast.LENGTH_SHORT).show();
             } else {
                 Toast.makeText(this, "No More Pages", Toast.LENGTH_SHORT).show();
             }
@@ -98,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void searchImages(NASAImageApi nasaImageApi, String searchTerm) {
-        Call<ResponseBody> call = nasaImageApi.searchImages(searchTerm, "image", currentPage);
+        Call<ResponseBody> call = nasaImageApi.searchImages(searchTerm, "image", paginationHelper.getCurrentPage());
         call.enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(@NonNull Call<ResponseBody> call, @NonNull Response<ResponseBody> response) {
@@ -108,7 +102,11 @@ public class MainActivity extends AppCompatActivity {
                         String jsonData = response.body().string();
                         Log.d("@Harman - Api response", "API response: " + jsonData);
                         // Process the JSON data and return data to list
-                        processJsonData(jsonData);
+                        int totalHits = getTotalHitsFromJson(jsonData);
+                        int pageSize = 100;
+                        int totalPages = calculateTotalPages(totalHits, pageSize);
+                        paginationHelper.setTotalPages(totalPages);
+                        JsonProcessor.processJsonData(jsonData, recyclerView, MainActivity.this);
                     } catch (IOException e) {
                         e.printStackTrace();
                         // Handle JSON parsing error
@@ -127,62 +125,20 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void processJsonData(String jsonData) {
+    private int getTotalHitsFromJson(String jsonData) {
         try {
             JSONObject jsonObject = new JSONObject(jsonData);
             JSONObject collectionObject = jsonObject.getJSONObject("collection");
-            JSONArray itemsArray = collectionObject.getJSONArray("items");
-
             JSONObject metadataObject = collectionObject.getJSONObject("metadata");
-            int totalHits = metadataObject.optInt("total_hits", 0);
-            int pageSize = 100;
-            totalPages = calculateTotalPages(totalHits, pageSize);
-
-            ArrayList<ItemModel> modelArrayList = new ArrayList<>(); // Create a new modelArrayList
-
-            for (int i = 0; i < itemsArray.length(); i++) {
-                JSONObject itemObject = itemsArray.getJSONObject(i);
-                JSONArray dataArray = itemObject.getJSONArray("data");
-                JSONObject dataObject = dataArray.getJSONObject(0);
-
-                String title = dataObject.optString("title", "");
-                String imageUrl = "";
-                String description = dataObject.optString("description", "");
-                String date_created = (dataObject.optString("date_created", ""));
-
-                if (itemObject.has("links")) {
-                    JSONArray linksArray = itemObject.getJSONArray("links");
-                    for (int j = 0; j < linksArray.length(); j++) {
-                        JSONObject linkObject = linksArray.getJSONObject(j);
-                        String render = linkObject.optString("render", "");
-                        if (render.equals("image")) {
-                            imageUrl = linkObject.optString("href", "");
-                            break;
-                        }
-                    }
-                }
-
-                ItemModel itemModel = new ItemModel(title, imageUrl, description, date_created);
-                modelArrayList.add(itemModel); // Add itemModel to modelArrayList
-            }
-
-            // Create and set the adapter with the updated modelArrayList
-            ItemAdapter itemAdapter = new ItemAdapter(modelArrayList);
-            recyclerView.setAdapter(itemAdapter);
-
-            itemAdapter.setOnItemClickListener(item -> {
-                // Handle item click here, launch the DetailsActivity and pass the item data to it
-                Intent intent = new Intent(MainActivity.this, DetailsViewActivity.class);
-                intent.putExtra("item", item);
-                startActivity(intent);
-            });
-
+            return metadataObject.optInt("total_hits", 0);
         } catch (JSONException e) {
             e.printStackTrace();
         }
+        return 0;
     }
 
     private int calculateTotalPages(int totalHits, int pageSize) {
         return (int) Math.ceil((double) totalHits / pageSize);
     }
+
 }
