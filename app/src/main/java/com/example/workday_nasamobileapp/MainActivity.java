@@ -1,5 +1,6 @@
 package com.example.workday_nasamobileapp;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
@@ -12,7 +13,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.workday_nasamobileapp.DataIndex.SearchResult;
+
+import com.example.workday_nasamobileapp.DataAdaptor.ItemAdapter;
+import com.example.workday_nasamobileapp.DataAdaptor.ItemModel;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,7 +23,6 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -31,9 +33,6 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 public class MainActivity extends AppCompatActivity {
 
-    private SearchResultsAdapter searchResultsAdapter;
-    private ItemAdapter itemAdapter;
-    private ArrayList<ItemModel> modelArrayList;
     private RecyclerView recyclerView;
 
 
@@ -48,9 +47,9 @@ public class MainActivity extends AppCompatActivity {
         EditText search_et = findViewById(R.id.search_bar);
         TextView page_num = findViewById(R.id.page_number);
 
-        searchResultsAdapter = new SearchResultsAdapter();
         recyclerView = findViewById(R.id.results_rv);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
 
         // Create Retrofit instance
         Retrofit retrofit = new Retrofit.Builder()
@@ -95,6 +94,8 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Please Add Search Term", Toast.LENGTH_SHORT).show();
             }
         });
+
+
     }
 
     private void processJsonData(String jsonData) {
@@ -102,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject jsonObject = new JSONObject(jsonData);
             JSONArray jsonArray = jsonObject.getJSONObject("collection").getJSONArray("items");
 
-            modelArrayList = new ArrayList<>(); // Create a new modelArrayList
+            ArrayList<ItemModel> modelArrayList = new ArrayList<>(); // Create a new modelArrayList
 
             // Iterate through items and extract search results
             Log.d("@Harman - num of Items", "processJsonData: " + jsonArray.length());
@@ -112,8 +113,9 @@ public class MainActivity extends AppCompatActivity {
                 JSONObject dataObject = dataArray.getJSONObject(0);
 
                 String title = dataObject.optString("title", "");
-                Log.d("@Harman - Title", "processJsonData: " + title);
-                String imageUrl = "";
+                String imageUrl = dataObject.optString("href", "");
+                String description = dataObject.optString("description", "");
+                String date_created = (dataObject.optString("date_created", ""));
 
                 if (itemObject.has("links")) {
                     JSONArray linksArray = itemObject.getJSONArray("links");
@@ -126,18 +128,24 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }
-                ItemModel itemModel = new ItemModel(title, imageUrl);
+
+                ItemModel itemModel = new ItemModel(title, imageUrl, description, date_created);
                 modelArrayList.add(itemModel); // Add itemModel to modelArrayList
             }
 
             // Create and set the adapter with the updated modelArrayList
-            itemAdapter = new ItemAdapter(modelArrayList, this);
+            ItemAdapter itemAdapter = new ItemAdapter(modelArrayList);
             recyclerView.setAdapter(itemAdapter);
+
+            itemAdapter.setOnItemClickListener(item -> {
+                // Handle item click here, launch the DetailsActivity and pass the item data to it
+                Intent intent = new Intent(MainActivity.this, DetailsViewActivity.class);
+                intent.putExtra("item", item);
+                startActivity(intent);
+            });
 
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
-
-
 }
