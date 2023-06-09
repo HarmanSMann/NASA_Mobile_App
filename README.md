@@ -22,6 +22,19 @@ The choice of using the MVC (Model-View-Controller) architecture for the NASA Mo
 
 In summary, the MVC architecture was chosen for the NASA Mobile App because it provides a structured and organized approach to handle user interactions, separates concerns effectively, promotes code reusability, and simplifies testing and debugging.
 
+<style>
+  ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  li {
+    display: inline-block;
+    margin-right: 10px;
+  }
+</style>
+
 <ul>
   <li>
     <img src="screenshots/Screenshot_20230609_044306.png" alt="Screenshot 1" width="300px">
@@ -29,13 +42,14 @@ In summary, the MVC architecture was chosen for the NASA Mobile App because it p
   <li>
     <img src="screenshots/Screenshot_20230609_044339.png" alt="Screenshot 2" width="300px">
   </li>
-     <li>
-    <img src="screenshots/Screenshot_20230609_044353.png" alt="Screenshot 1" width="300px">
+  <li>
+    <img src="screenshots/Screenshot_20230609_044353.png" alt="Screenshot 3" width="300px">
   </li>
   <li>
-    <img src="screenshots/Screenshot_20230609_044412.png" alt="Screenshot 2" width="300px">
+    <img src="screenshots/Screenshot_20230609_044412.png" alt="Screenshot 4" width="300px">
   </li>
 </ul>
+
 
 
 ## How to Run the Application
