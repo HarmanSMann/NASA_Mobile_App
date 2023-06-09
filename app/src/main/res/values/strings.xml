@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Workday - NASA Mobile App</string>
+    <string name="image_from_the_title">image from the title</string>
+    <string name="item_image">Item image</string>
 </resources>
